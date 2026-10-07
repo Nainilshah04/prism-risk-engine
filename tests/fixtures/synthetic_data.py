@@ -29,7 +29,7 @@ def generate_synthetic_prices(
         DataFrame[date x asset] with tz-naive DatetimeIndex, sorted, strictly positive.
     """
     if tickers is None:
-        tickers = ["equity", "gold", "debt", "benchmark", "fx"]
+        tickers = ["equity", "gold", "debt", "benchmark", "fx", "global_benchmark"]
 
     dates = pd.bdate_range(start=start_date, end=end_date)
     n_days = len(dates)
@@ -44,19 +44,20 @@ def generate_synthetic_prices(
         "debt": {"mu": 0.065, "sigma": 0.015, "start": 1000.0},
         "benchmark": {"mu": 0.11, "sigma": 0.17, "start": 10000.0},
         "fx": {"mu": 0.03, "sigma": 0.06, "start": 75.0},
+        "global_benchmark": {"mu": 0.10, "sigma": 0.16, "start": 3500.0},
     }
 
-    # Correlation matrix
+    # 6x6 Correlation matrix
     corr = np.array([
-        [1.00,  0.05,  0.02,  0.96,  0.10],  # equity
-        [0.05,  1.00,  0.05,  0.06, -0.15],  # gold
-        [0.02,  0.05,  1.00,  0.02,  0.01],  # debt
-        [0.96,  0.06,  0.02,  1.00,  0.08],  # benchmark
-        [0.10, -0.15,  0.01,  0.08,  1.00],  # fx
+        [1.00,  0.05,  0.02,  0.96,  0.10,  0.55],  # equity
+        [0.05,  1.00,  0.05,  0.06, -0.15,  0.12],  # gold
+        [0.02,  0.05,  1.00,  0.02,  0.01,  0.03],  # debt
+        [0.96,  0.06,  0.02,  1.00,  0.08,  0.58],  # benchmark
+        [0.10, -0.15,  0.01,  0.08,  1.00, -0.10],  # fx
+        [0.55,  0.12,  0.03,  0.58, -0.10,  1.00],  # global_benchmark
     ])
 
-    # Subset or adapt correlation if different tickers passed
-    if n_assets == 5 and tickers == ["equity", "gold", "debt", "benchmark", "fx"]:
+    if n_assets == 6 and tickers == ["equity", "gold", "debt", "benchmark", "fx", "global_benchmark"]:
         c_matrix = corr
     else:
         c_matrix = np.eye(n_assets)

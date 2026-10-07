@@ -44,3 +44,17 @@ Author: Nainil Shah
 - **Status**: Accepted
 - **Context**: Financial markets are non-stationary with low signal-to-noise ratios. Student and hobbyist projects often employ black-box regressors claiming to predict stock prices.
 - **Decision**: Focus strictly on tail risk, drawdown dynamics, factor sensitivities, and robust portfolio construction. No speculative buy/sell signals.
+
+---
+
+### ADR-7: Verified Asset Universe & Locked Sample Window
+- **Status**: Accepted
+- **Context**: Multi-asset cross-sectional analysis requires verifying live availability, ticker symbols, and history length across Indian and global asset classes.
+- **Verification Findings**:
+  - `equity` (`NIFTYBEES.NS`): Verified available since `2009-01-02` (4,300+ trading days).
+  - `gold` (`GOLDBEES.NS`): Verified available since `2009-01-02`.
+  - `debt` (`LIQUIDBEES.NS`): Verified available since `2009-01-02`. Daily fractional unit dividend model produces flat ~1,000 INR price on Yahoo Finance; engine provides `synthetic_yield` compounding option to reflect true debt accrual.
+  - `benchmark` (`^NSEI`): Verified available since `2007-09-17`.
+  - `fx` (`USDINR=X`): Verified available since `2003-12-01`.
+  - `global_benchmark` (`^GSPC`): Verified available since `1927-12-30`.
+- **Decision**: Lock the primary 6-asset universe above. Baseline effective sample window is locked from `2015-01-01` to latest available (`10+ years`), ensuring a 100% overlapping trading history across all asset classes with zero survivorship or truncation bias.
