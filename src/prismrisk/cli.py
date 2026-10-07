@@ -115,9 +115,72 @@ def refresh_data(
 @app.command()
 def run(
     config: str = typer.Option("configs/demo.yaml", "--config", "-c", help="Path to YAML configuration"),
+    offline: bool = typer.Option(True, "--offline/--online", help="Run offline using committed snapshot"),
 ) -> None:
-    """Execute full risk analysis pipeline (available in subsequent phases)."""
-    rprint("[bold yellow]Full analytics pipeline will run here (Phases 2-6). Use 'check-data' for Phase 1.[/bold yellow]")
+    """Execute walk-forward portfolio backtesting and compare allocation strategies."""
+    from prismrisk.metrics.returns import simple_returns
+    from prismrisk.portfolio.backtest import compare_strategies
+
+    cfg = Config.load(config)
+    rprint(f"[bold cyan]Prism Risk Engine[/bold cyan] | Project: [green]{cfg.project}[/green]")
+    rprint(f"[bold]Walk-Forward Setup:[/bold] Lookback={cfg.strategies.lookback}d | Rebalance={cfg.strategies.rebalance} | Cost={cfg.strategies.cost_bps}bps | Cov={cfg.strategies.covariance}")
+
+    tickers = {name: asset.ticker for name, asset in cfg.assets.items()}
+
+    provider: DataProvider
+    if offline:
+        provider = SnapshotProvider(cfg.data.snapshot_dir + "/market_data_snapshot.parquet")
+        raw_prices = provider.fetch_all(tickers=tickers, start=cfg.data.start, end=cfg.data.end)
+    else:
+        cache = ParquetCache(cache_dir=cfg.data.cache_dir, snapshot_dir=cfg.data.snapshot_dir)
+        provider = YFinanceProvider()
+        raw_prices = cache.load_or_fetch(tickers=tickers, provider=provider, refresh=False, start=cfg.data.start, end=cfg.data.end)
+
+    aligned_prices, _ = align_prices(raw_prices, max_ffill_days=cfg.data.max_ffill_days, start_date=cfg.data.start)
+    all_rets = simple_returns(aligned_prices)
+    portfolio_assets = list(cfg.portfolio.weights.keys())
+    asset_rets = all_rets[portfolio_assets]
+
+    rprint("\n[bold yellow]Running walk-forward backtests across strategies (with weight drift and costs)...[/bold yellow]")
+    summary_df, _ = compare_strategies(
+        returns=asset_rets,
+        strategies=cfg.strategies.include,
+        lookback=cfg.strategies.lookback,
+        rebalance=cfg.strategies.rebalance,
+        cost_bps=cfg.strategies.cost_bps,
+        covariance_method=cfg.strategies.covariance,
+        max_weight=cfg.strategies.caps.max_weight,
+        min_weight=cfg.strategies.caps.min_weight,
+        rf_annual=cfg.risk_free.annual_rate,
+    )
+
+    table = Table(title="Walk-Forward Strategy Comparison Table (No Lookahead, Drift & Costs Included)")
+    table.add_column("Strategy", style="bold cyan")
+    table.add_column("CAGR", justify="right")
+    table.add_column("Annual Vol", justify="right")
+    table.add_column("Sharpe (6.5%)", justify="right")
+    table.add_column("Max Drawdown", justify="right")
+    table.add_column("Calmar", justify="right")
+    table.add_column("Annual Turnover", justify="right")
+    table.add_column("Total Costs (bps)", justify="right")
+
+    for strat, row in summary_df.iterrows():
+        table.add_row(
+            str(strat),
+            str(row["CAGR"]),
+            str(row["Annual Vol"]),
+            str(row["Sharpe"]),
+            str(row["Max Drawdown"]),
+            str(row["Calmar"]),
+            str(row["Annual Turnover"]),
+            str(row["Total Costs (bps)"]),
+        )
+
+    console.print(table)
+    rprint("\n[bold yellow]Methodological Note on Max Sharpe Stability:[/bold yellow]")
+    rprint("  * Max Sharpe optimizes sample mean returns (mu), which suffer from significant estimation error.")
+    rprint("  * This creates parameter sensitivity and higher portfolio turnover compared to Minimum Variance and Risk Parity,")
+    rprint("    which only require covariance estimation (substantially more stable).")
 
 
 @app.command()
