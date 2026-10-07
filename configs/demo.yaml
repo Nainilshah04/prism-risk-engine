@@ -1,0 +1,76 @@
+project: demo-60-20-20
+data:
+  start: "2015-01-01" # effective start = max(this, latest asset start)
+  end: null # null = latest available
+  source: yfinance
+  cache_dir: data/raw
+  snapshot_dir: data/snapshot
+  max_ffill_days: 3
+
+assets:
+  equity:
+    ticker: "NIFTYBEES.NS"
+    type: equity
+    sensitivity:
+      equity_beta: 1.0
+  gold:
+    ticker: "GOLDBEES.NS"
+    type: gold
+    sensitivity:
+      gold_beta: 1.0
+  debt:
+    ticker: "LIQUIDBEES.NS"
+    type: debt
+    duration: 0.1
+    convexity: 0.0
+    # synthetic_yield allows modelling cash accrual if ETF price is constant/dividend-paying
+    synthetic_yield: 0.065
+  benchmark:
+    ticker: "^NSEI"
+  fx:
+    ticker: "USDINR=X"
+  global_benchmark:
+    ticker: "^GSPC"
+
+portfolio:
+  weights:
+    equity: 0.60
+    gold: 0.20
+    debt: 0.20
+  rebalance: quarterly # none | monthly | quarterly | annual
+
+risk_free:
+  type: flat # flat | series
+  annual_rate: 0.065 # Documented proxy (6.5% repo / 91-day T-Bill average)
+
+metrics:
+  trading_days: 252
+  vol_windows: [30, 90]
+  ewma_lambda: 0.94
+
+risk:
+  confidence: [0.95, 0.99]
+  mc_paths: 10000
+  seed: 42
+  var_window: 252
+
+strategies:
+  lookback: 252
+  rebalance: monthly
+  cost_bps: 10
+  covariance: ledoit_wolf # ledoit_wolf | sample
+  caps:
+    max_weight: 0.70
+    min_weight: 0.00
+  include:
+    - equal_weight
+    - inverse_vol
+    - min_variance
+    - risk_parity
+    - max_sharpe
+
+scenarios_file: configs/scenarios.yaml
+
+output:
+  dir: outputs
+  factsheet: true

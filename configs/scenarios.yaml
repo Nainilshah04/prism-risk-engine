@@ -1,0 +1,29 @@
+historical:
+  - name: "COVID crash"
+    start: "2020-02-19"
+    end: "2020-03-23"
+  - name: "2022 rate hikes"
+    start: "2022-01-03"
+    end: "2022-06-30"
+
+hypothetical:
+  - name: "Equity -20%"
+    shocks:
+      equity: -0.20
+  - name: "INR -5%"
+    shocks:
+      fx_inr: -0.05
+  - name: "Rates +100bp"
+    shocks:
+      rates_bp: 100
+  - name: "Equity -20% & rates +100bp"
+    shocks:
+      equity: -0.20
+      rates_bp: 100
+
+grids:
+  - name: "Equity x Rates"
+    x: equity
+    x_values: [-0.30, -0.20, -0.10, 0.0]
+    y: rates_bp
+    y_values: [0, 50, 100, 200]
