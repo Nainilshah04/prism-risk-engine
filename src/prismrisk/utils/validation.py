@@ -49,16 +49,20 @@ def validate_prices(prices: pd.DataFrame) -> None:
         raise ValidationError("Prices must be strictly positive (> 0).")
 
 
-def validate_returns(returns: pd.Series | pd.DataFrame) -> None:
+def validate_returns(
+    returns: pd.Series | pd.DataFrame,
+    require_datetime: bool = True,
+) -> None:
     """Validate return series or return matrix.
 
     Requirements:
         - Must be a pandas Series or DataFrame.
-        - Index must be a sorted DatetimeIndex without duplicates.
+        - Index must be a sorted DatetimeIndex (if require_datetime=True) without duplicates.
         - Values must be finite (no NaNs, no inf).
 
     Args:
         returns: Return series or return matrix.
+        require_datetime: If True, enforces DatetimeIndex. If False, allows any unique sorted index.
 
     Raises:
         ValidationError: If any condition is violated.
@@ -67,12 +71,13 @@ def validate_returns(returns: pd.Series | pd.DataFrame) -> None:
         raise ValidationError(f"Returns must be pd.Series or pd.DataFrame, got {type(returns).__name__}")
     if returns.empty:
         raise ValidationError("Returns object is empty.")
-    if not isinstance(returns.index, pd.DatetimeIndex):
-        raise ValidationError(f"Returns index must be DatetimeIndex, got {type(returns.index).__name__}")
+    if require_datetime:
+        if not isinstance(returns.index, pd.DatetimeIndex):
+            raise ValidationError(f"Returns index must be DatetimeIndex, got {type(returns.index).__name__}")
     if not returns.index.is_monotonic_increasing:
-        raise ValidationError("Returns DatetimeIndex must be strictly sorted ascending.")
+        raise ValidationError("Returns index must be strictly sorted ascending.")
     if not returns.index.is_unique:
-        raise ValidationError("Returns DatetimeIndex contains duplicate dates.")
+        raise ValidationError("Returns index contains duplicate entries.")
     if returns.isna().any() if isinstance(returns, pd.Series) else returns.isna().any().any():
         raise ValidationError("Returns contain NaN values.")
     values = returns.to_numpy()
